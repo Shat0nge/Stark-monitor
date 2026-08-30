@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.so
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+backups/
+config.env
+.env
+.env.*
