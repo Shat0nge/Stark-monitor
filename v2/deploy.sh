@@ -18,6 +18,7 @@ cp "$SCRIPT_DIR"/config.py \
    "$SCRIPT_DIR"/inverter.py \
    "$SCRIPT_DIR"/parser.py \
    "$SCRIPT_DIR"/database.py \
+   "$SCRIPT_DIR"/db_sync.py \
    "$SCRIPT_DIR"/monitor.py \
    "$SCRIPT_DIR"/web.py \
    "$INSTALL_DIR"/
@@ -38,6 +39,7 @@ python3 -m py_compile \
     inverter.py \
     parser.py \
     database.py \
+    db_sync.py \
     monitor.py \
     web.py
 

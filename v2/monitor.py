@@ -2,16 +2,15 @@ import time
 import threading
 from datetime import datetime
 
-import inverter
-import parser
 import database
 import web
-import db_sync
 
 from config import (
+    INVERTER_ENABLED,
     POLL_INTERVAL,
     DB_SAVE_INTERVAL,
     CLEANUP_INTERVAL,
+    DB_SYNC_ENABLED,
 )
 
 INTERVAL = POLL_INTERVAL
@@ -30,9 +29,30 @@ lock = threading.Lock()
 
 
 def poll_once():
+    import inverter
+    import parser
+
     raw = inverter.query("QPIGS")
     parsed = parser.parse_qpigs(raw)
+
     return raw, parsed
+
+
+def set_inverter_disabled_state():
+    updated = datetime.now().strftime("%H:%M:%S")
+
+    with lock:
+        state["online"] = False
+        state["raw"] = ""
+        state["updated"] = updated
+        state["v"] = {}
+
+    web.set_state(
+        False,
+        "",
+        updated,
+        {}
+    )
 
 
 def update_state(raw, parsed):
@@ -83,21 +103,74 @@ def web_thread():
         print("WEB ERROR:", repr(e), flush=True)
 
 
+def db_sync_thread():
+    if not DB_SYNC_ENABLED:
+        return
+
+    import db_sync
+
+    print(
+        "DB SYNC THREAD: starting",
+        flush=True
+    )
+
+    db_sync.run()
+
+
 def run():
-    print("STARK monitor starting", flush=True)
+    print(
+        "STARK monitor starting",
+        flush=True
+    )
+
+    print(
+        f"CONFIG: inverter_enabled={INVERTER_ENABLED}, "
+        f"db_sync_enabled={DB_SYNC_ENABLED}",
+        flush=True
+    )
 
     threading.Thread(
         target=web_thread,
-        daemon=True
-    ).start()
-
-    print("DB SYNC THREAD: starting", flush=True)
-
-    threading.Thread(
-        target=db_sync.run,
         daemon=True,
-        name="db-sync"
+        name="web"
     ).start()
+
+    if DB_SYNC_ENABLED:
+        print(
+            "DB SYNC: ENABLED",
+            flush=True
+        )
+
+        threading.Thread(
+            target=db_sync_thread,
+            daemon=True,
+            name="db-sync"
+        ).start()
+
+    else:
+        print(
+            "DB SYNC: DISABLED "
+            "(STARK_DB_SYNC_ENABLED=false)",
+            flush=True
+        )
+
+    if not INVERTER_ENABLED:
+        print(
+            "INVERTER POLLING: DISABLED "
+            "(STARK_INVERTER_ENABLED=false)",
+            flush=True
+        )
+
+        set_inverter_disabled_state()
+
+        while True:
+            time.sleep(60)
+
+    print(
+        "INVERTER POLLING: ENABLED "
+        f"(interval={INTERVAL}s)",
+        flush=True
+    )
 
     while True:
         try:
@@ -105,7 +178,11 @@ def run():
             update_state(raw, parsed)
 
         except Exception as e:
-            print("POLL ERROR:", repr(e), flush=True)
+            print(
+                "POLL ERROR:",
+                repr(e),
+                flush=True
+            )
 
             with lock:
                 state["online"] = False
