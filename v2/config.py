@@ -24,3 +24,17 @@ RETENTION_DAYS = int(os.getenv("STARK_RETENTION_DAYS", "90"))
 
 WEB_HOST = os.getenv("STARK_WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("STARK_WEB_PORT", "8080"))
+
+DB_SYNC_ENABLED = os.getenv("STARK_DB_SYNC_ENABLED", "false").lower() in (
+    "1", "true", "yes", "on"
+)
+DB_SYNC_HOST = os.getenv("STARK_DB_SYNC_HOST", "10.10.0.1")
+DB_SYNC_PORT = int(os.getenv("STARK_DB_SYNC_PORT", "22"))
+DB_SYNC_USER = os.getenv("STARK_DB_SYNC_USER", "pi")
+DB_SYNC_DB_PATH = os.getenv(
+    "STARK_DB_SYNC_DB_PATH",
+    "/home/pi/stark_monitor.db"
+)
+DB_SYNC_INTERVAL = float(
+    os.getenv("STARK_DB_SYNC_INTERVAL", "3600")
+)

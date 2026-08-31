@@ -6,6 +6,7 @@ import inverter
 import parser
 import database
 import web
+import db_sync
 
 from config import (
     POLL_INTERVAL,
@@ -88,6 +89,14 @@ def run():
     threading.Thread(
         target=web_thread,
         daemon=True
+    ).start()
+
+    print("DB SYNC THREAD: starting", flush=True)
+
+    threading.Thread(
+        target=db_sync.run,
+        daemon=True,
+        name="db-sync"
     ).start()
 
     while True:
