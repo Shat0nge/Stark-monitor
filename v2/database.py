@@ -9,7 +9,9 @@ def connect():
 
 
 def save_measurement(v, raw_qpigs=None):
-    with connect() as db:
+    db = connect()
+
+    try:
         db.execute("""
         INSERT INTO measurements (
             ts, grid_voltage, grid_frequency, output_voltage, output_frequency,
@@ -48,16 +50,24 @@ def save_measurement(v, raw_qpigs=None):
         ))
         db.commit()
 
+    finally:
+        db.close()
+
 
 def cleanup():
     cutoff = int(time.time()) - RETENTION_DAYS * 86400
 
-    with connect() as db:
+    db = connect()
+
+    try:
         db.execute(
             "DELETE FROM measurements WHERE ts < ?",
             (cutoff,)
         )
         db.commit()
+
+    finally:
+        db.close()
 
 
 def history(start_ts, end_ts, metrics, step=0):
@@ -84,28 +94,34 @@ def history(start_ts, end_ts, metrics, step=0):
 
     columns = ", ".join(metrics)
 
-    if step and step > 1:
-        sql = f"""
-            SELECT
-                (ts / ?) * ? AS ts,
-                {", ".join(f"AVG({m}) AS {m}" for m in metrics)}
-            FROM measurements
-            WHERE ts >= ? AND ts <= ?
-            GROUP BY (ts / ?)
-            ORDER BY ts
-        """
-        params = (step, step, start_ts, end_ts, step)
-    else:
-        sql = f"""
-            SELECT ts, {columns}
-            FROM measurements
-            WHERE ts >= ? AND ts <= ?
-            ORDER BY ts
-        """
-        params = (start_ts, end_ts)
+    db = connect()
 
-    with connect() as db:
+    try:
+        if step and step > 1:
+            sql = f"""
+                SELECT
+                    (ts / ?) * ? AS ts,
+                    {", ".join(f"AVG({m}) AS {m}" for m in metrics)}
+                FROM measurements
+                WHERE ts >= ? AND ts <= ?
+                GROUP BY (ts / ?)
+                ORDER BY ts
+            """
+            params = (step, step, start_ts, end_ts, step)
+
+        else:
+            sql = f"""
+                SELECT ts, {columns}
+                FROM measurements
+                WHERE ts >= ? AND ts <= ?
+                ORDER BY ts
+            """
+            params = (start_ts, end_ts)
+
         rows = db.execute(sql, params).fetchall()
+
+    finally:
+        db.close()
 
     result = []
 
